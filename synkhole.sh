@@ -53,7 +53,6 @@ bootstrap() {
     if [ ! -d "`dirname $LOGFILE`" ] ; then
         mkdir -p `dirname $LOGFILE`
         check_exit_status $?
-        log "Log path created at $LOGFILE"
     fi 
     log "This is $PRG at `hostname -f`"
     # test for valid backup sources
@@ -137,7 +136,7 @@ cleanup() {
             fi                                                                      
         else
             log "Can't tell if backup $i is valid."
-            log " Please review later."
+            log "Please review."
             invalid+=("$i")
         fi
     done                                                                        
@@ -166,6 +165,8 @@ backup() {
 }
 
 summary() {
+    log "Backup completed."
+    log "Summary:"
     if [ "${#outdated[@]}" -gt "0" ] ; then
         log "The following outdated backups were purged:"
         log "`echo ${outdated[@]}`"

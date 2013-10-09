@@ -6,8 +6,6 @@
 #
 # @nunogt
 
-. conf/synkhole.conf
-
 log() {                                                                         
     echo "`date --iso-8601=seconds` $1" | tee -a $LOGFILE                       
 }   
@@ -48,6 +46,7 @@ resolve_links(){
 
 bootstrap() {
     resolve_links
+    . $SYNKHOLE_HOME/conf/synkhole.conf
     # set up logging
     LOGFILE="$SYNKHOLE_HOME/log/synkhole.log"
     if [ ! -d "`dirname $LOGFILE`" ] ; then

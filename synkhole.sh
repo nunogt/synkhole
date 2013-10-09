@@ -21,7 +21,7 @@ check_exit_status() {
 
 resolve_links_unix() {
     PRG="$0"
-    while [ -h "$PRG" ]; do
+    while [ -h "$PRG" ] ; do
         ls=`ls -ld "$PRG"`
         link=`expr "$ls" : '.*-> \(.*\)$'`
         if expr "$link" : '/.*' > /dev/null; then
@@ -74,7 +74,7 @@ bootstrap() {
     fi
     TIMESTAMP="`date +%s`"
     CURRENT="$TIMESTAMP"
-    PREVIOUS="`ls -1 $STORAGE_DIR/ | tail -n 1`"
+    PREVIOUS="`ls -rt1 $STORAGE_DIR/ | tail -n 1`"
     WORKING_COPY="$STORAGE_DIR/$CURRENT.synkhole" 
 
     log "Boostrap completed."
@@ -119,12 +119,33 @@ check_consistency() {
     deref_dirs
 }
 
-cleanup() {
-    log "Performing cleanup..."
-    mv $WORKING_COPY $STORAGE_DIR/$CURRENT
-    check_exit_status $?
-    log "Everything went fine. Backup location: $STORAGE_DIR/$CURRENT"
-}
+cleanup() {                                                                     
+    log "Performing cleanup..."                                                 
+    mv $WORKING_COPY $STORAGE_DIR/$CURRENT                                      
+    check_exit_status $?                                                        
+    outdated=()                                                                 
+    invalid=()
+    # a bit of voodoo to determine the treshold for removal                     
+    OLDEST_DATE=$(date +%s --date "`date --iso-8601` -$DISCARD_MAX_DAYS day")        
+    for i in $STORAGE_DIR/* ; do                                                
+        PARSED_DATE="$(date --date @`basename $i` > /dev/null 2>&1)"
+        if [ "$?" == "0" ] ; then
+            if [ "`basename $i`" -lt "$OLDEST_DATE" ] ; then                                        
+                log "$i is older than the configured maximum treshold."             
+                log "Scheduling for removal."                                       
+                outdated+=("$i")                                                    
+            fi                                                                      
+        else
+            log "Can't tell if backup $i is valid."
+            log " Please review later."
+            invalid+=("$i")
+        fi
+    done                                                                        
+    for o in "${outdated[@]}" ; do
+        log "Removing $o"
+        rm -rf $o
+    done
+}       
 
 backup() {
     log "Initiating backup procedure"
@@ -144,7 +165,20 @@ backup() {
     synchronize
 }
 
+summary() {
+    if [ "${#outdated[@]}" -gt "0" ] ; then
+        log "The following outdated backups were purged:"
+        log "`echo ${outdated[@]}`"
+    fi
+    if [ "${#invalid[@]}" -gt "0" ] ; then
+        log "The following backups are invalid and need your attention:"
+        log "`echo ${invalid[@]}`"
+    fi
+    log "Latest backup is: $STORAGE_DIR/$CURRENT"
+}
+
 bootstrap
 check_consistency
 backup
 cleanup
+summary
